@@ -10,7 +10,7 @@
           RowDefinitions="*, Auto"
           ColumnSpacing="5">
 
-        <VerticalStackLayout 
+        <VerticalStackLayout
             x:Name="WelcomeContent"
             Grid.Row="0"
             Grid.Column="0"
@@ -18,27 +18,28 @@
             HorizontalOptions="Center"
             Padding="20"
             IsVisible="True">
-            <Image Source="inscribe_welcome.png" 
-                   WidthRequest="650" 
-                   HeightRequest="350" 
+            <Image Source="inscribe_welcome.png"
+                   WidthRequest="650"
+                   HeightRequest="350"
                    HorizontalOptions="Center" />
-            <Label Text="Open a PDF to start highlighting notes!" 
-                   FontSize="20" 
+            <Label Text="Open a PDF to start highlighting notes!"
+                   FontSize="20"
                    FontAttributes="Bold"
-                   HorizontalOptions="Center" 
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" 
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}"
                    Margin="0,10,0,0"/>
-            <Label Text="Your highlights will be saved automatically." 
-                   HorizontalOptions="Center" 
+            <Label Text="Your highlights will be saved automatically."
+                   HorizontalOptions="Center"
                    TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
         </VerticalStackLayout>
 
-        <syncfusion:SfPdfViewer 
+        <syncfusion:SfPdfViewer
             x:Name="PdfViewer"
             Grid.Row="0"
             Grid.Column="0"
             TextSelectionChanged="OnPdfTextSelected"
             DocumentLoaded="OnPdfDocumentLoaded" />
+
         <ScrollView x:Name="LogPanel"
                     Grid.Row="0"
                     Grid.Column="1"
@@ -67,17 +68,15 @@
                                Spacing="10"
                                Padding="10"
                                HorizontalOptions="FillAndExpand">
-
             <Button x:Name="OpenPdfButton"
-                    Text="Open PDF" 
+                    Text="Open PDF"
                     Clicked="OnOpenPdfClicked"
                     HorizontalOptions="FillAndExpand" />
 
             <Button x:Name="ExportButton"
-                    Text="Export Notes" 
+                    Text="Export Notes"
                     Clicked="OnExportClicked"
                     HorizontalOptions="FillAndExpand" />
-
         </HorizontalStackLayout>
 
         <ActivityIndicator x:Name="ExportSpinner"
