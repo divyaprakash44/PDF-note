@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Syncfusion.Maui.Core.Hosting;
+using PdfNoteCompiler.Services;
 
 namespace PdfNoteCompiler
 {
@@ -19,11 +20,18 @@ namespace PdfNoteCompiler
                 })
                 .ConfigureSyncfusionCore();
 
+            builder.Services.AddSingleton<INoteService, NoteService>();
+            builder.Services.AddSingleton<MainPage>();
+
 #if DEBUG
     		builder.Logging.AddDebug();
 #endif
 
-            return builder.Build();
+            var app = builder.Build();
+            var noteService = app.Services.GetRequiredService<INoteService>();
+            _ = Task.Run(async () => await noteService.EnsureNoteDirectoryExistsAsync());
+
+            return app;
         }
     }
 }

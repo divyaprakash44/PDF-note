@@ -1,6 +1,9 @@
 ﻿using Syncfusion.Maui.PdfViewer; // We need this for the "TextSelectionChangedEventArgs"
 using System.IO; // Needed for Path.GetFileNameWithoutExtension
 using Microsoft.Maui.ApplicationModel;
+using PdfNoteCompiler.Services;
+using Microsoft.Maui.ApplicationModel.Communication;
+using System.Threading.Tasks;
 
 namespace PdfNoteCompiler;
 
@@ -9,15 +12,24 @@ public partial class MainPage : ContentPage
     private bool isLogPanelVisible = true;
     private string _currentPdfFileName = string.Empty; // Store the filename of the currently open PDF
 
-    public MainPage()
+    private readonly INoteService _noteService;
+
+    public MainPage(INoteService noteService)
     {
         InitializeComponent();
 
-        MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(300);
+        _noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
 
-        // Hide the PDF viewer until a document is loaded
-        //PdfViewer.IsVisible = false;
+        MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(300);
         ResetUIState();
+
+        MessagingCenter.Subscribe<NoteService, string>(this, "Log", (sender, logText) =>
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                LogLabel.Text = logText + "\n" + LogLabel.Text;
+            });
+        });
     }
 
     // --- Helper Method to Reset UI State ---
@@ -93,14 +105,21 @@ public partial class MainPage : ContentPage
 
 
     // STUB for Phase 3: Highlight Trigger
-    private void OnPdfTextSelected(object sender, TextSelectionChangedEventArgs e)
+    private async void OnPdfTextSelected(object sender, TextSelectionChangedEventArgs e)
     {
+        if (_noteService == null)
+        {
+            LogLabel.Text = "[ERROR]: NoteService is not initialized.\n" + LogLabel.Text;
+            return;
+        }
+
         if (!string.IsNullOrEmpty(e.SelectedText) && !string.IsNullOrEmpty(_currentPdfFileName))
         {
             string capturedText = e.SelectedText; // Grab the text immediately
 
             LogLabel.Text = $"[Action]: Auto-adding highlight for '{_currentPdfFileName}'. Text: '{capturedText.Substring(0, Math.Min(capturedText.Length, 30))}...'\n" + LogLabel.Text;
 
+            await _noteService.AppendHighlightAsync(capturedText, _currentPdfFileName); //Call to the actual service
             // *** Phase 4/5 Call will go here ***
             // await _noteService.AppendHighlightAsync(capturedText, _currentPdfFileName);
 
@@ -137,5 +156,11 @@ public partial class MainPage : ContentPage
             MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(0);
             ToggleLogButton.Text = ">";
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        MessagingCenter.Unsubscribe<NoteService, string>(this, "Log");
+        base.OnDisappearing();
     }
 }

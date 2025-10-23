@@ -37,7 +37,7 @@
             x:Name="PdfViewer"
             Grid.Row="0"
             Grid.Column="0"
-            TextSelectionChanged="OnPdfTextSelected"
+            TextSelectionChanged="OnPdfTextSelected" 
             DocumentLoaded="OnPdfDocumentLoaded" />
 
         <ScrollView x:Name="LogPanel"
