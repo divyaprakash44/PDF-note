@@ -101,6 +101,7 @@ public partial class MainPage : ContentPage
     {
         WelcomeContent.IsVisible = false; // Hide welcome message
         PdfViewer.IsVisible = true;      // Show PDF viewer
+        ControlButton.IsVisible = true;      // Show control buttons
         LogLabel.Text = $"[Loaded]: {_currentPdfFileName}.pdf successfully.\n" + LogLabel.Text;
     }
 

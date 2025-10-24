@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:syncfusion="clr-namespace:Syncfusion.Maui.PdfViewer;assembly=Syncfusion.Maui.PdfViewer"
              x:Class="PdfNoteCompiler.MainPage"
-             Title="PDF Note Compiler">
+             Title="Inscribe">
 
     <Grid x:Name="MainLayoutGrid"
           ColumnDefinitions="*, 300, Auto"
@@ -12,22 +12,20 @@
 
         <VerticalStackLayout
             x:Name="WelcomeContent"
-            Grid.Row="0"
-            Grid.Column="0"
-            VerticalOptions="Center"
-            HorizontalOptions="Center"
-            Padding="20"
-            IsVisible="True">
-            <Image Source="inscribe_welcome.png"
-                   WidthRequest="650"
+            Grid.Row="0" Grid.Column="0"
+            VerticalOptions="Center" HorizontalOptions="Center" Padding="20" IsVisible="True">
+
+            <Image Source="inscribe_welcome.png" WidthRequest="650"
                    HeightRequest="350"
                    HorizontalOptions="Center" />
+
             <Label Text="Open a PDF to start highlighting notes!"
                    FontSize="20"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
                    Margin="0,10,0,0"/>
+
             <Label Text="Your highlights will be saved automatically."
                    HorizontalOptions="Center"
                    TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
@@ -35,39 +33,30 @@
 
         <syncfusion:SfPdfViewer
             x:Name="PdfViewer"
-            Grid.Row="0"
-            Grid.Column="0"
-            TextSelectionChanged="OnPdfTextSelected" 
+            Grid.Row="0" Grid.Column="0"
+            IsVisible="False" TextSelectionChanged="OnPdfTextSelected"
             DocumentLoaded="OnPdfDocumentLoaded" />
+        <ScrollView
+            x:Name="LogPanel"
+            Grid.Row="0" Grid.Column="1"
+            BackgroundColor="#2e2e2e">
 
-        <ScrollView x:Name="LogPanel"
-                    Grid.Row="0"
-                    Grid.Column="1"
-                    BackgroundColor="#2e2e2e"
-                    IsVisible="{Binding Source={x:Reference ToggleLogButton}, Path=Text, Converter={StaticResource ToggleButtonTextToBoolConverter}}">
             <Label x:Name="LogLabel"
-                   Text="-- Log Initialized --"
-                   TextColor="WhiteSmoke"
-                   FontSize="12"
-                   Padding="10"/>
+                    Text="-- Log Initialized --"
+                    TextColor="WhiteSmoke"
+                    FontSize="12"
+                    Padding="10"/>
         </ScrollView>
 
         <Button x:Name="ToggleLogButton"
-                Grid.Row="0"
-                Grid.Column="2"
-                Text="&lt;"
-                Clicked="OnToggleLogPanelClicked"
-                VerticalOptions="Center"
-                HorizontalOptions="Center"
-                WidthRequest="40"
-                CornerRadius="20"/>
+                Grid.Row="0" Grid.Column="2" Text="&lt;" Clicked="OnToggleLogPanelClicked"
+                VerticalOptions="Center" HorizontalOptions="Center" WidthRequest="40" CornerRadius="20"/>
 
-        <HorizontalStackLayout Grid.Row="1"
-                               Grid.Column="0"
-                               Grid.ColumnSpan="3"
-                               Spacing="10"
-                               Padding="10"
-                               HorizontalOptions="FillAndExpand">
+        <HorizontalStackLayout
+            x:Name="ControlButton"
+            Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+            Spacing="10" Padding="10">
+
             <Button x:Name="OpenPdfButton"
                     Text="Open PDF"
                     Clicked="OnOpenPdfClicked"
@@ -80,14 +69,8 @@
         </HorizontalStackLayout>
 
         <ActivityIndicator x:Name="ExportSpinner"
-                           Grid.Row="0"
-                           Grid.Column="0"
-                           Grid.ColumnSpan="3"
-                           IsRunning="False"
-                           IsVisible="False"
-                           Color="CornflowerBlue"
-                           VerticalOptions="Center"
-                           HorizontalOptions="Center" />
+                           Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Grid.RowSpan="2" IsRunning="False" IsVisible="False" Color="CornflowerBlue"
+                           VerticalOptions="Center" HorizontalOptions="Center" />
 
     </Grid>
 </ContentPage>
