@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Syncfusion.DocIO;
+using Syncfusion.DocIORenderer;
 using Syncfusion.DocIO.DLS;
 using System.Threading;
 using Microsoft.Maui.ApplicationModel.Communication;
@@ -12,6 +12,7 @@ using IWParagraph = Syncfusion.DocIO.DLS.IWParagraph;
 using WordDocument = Syncfusion.DocIO.DLS.WordDocument;
 using FormatType = Syncfusion.DocIO.FormatType;
 using IWSection = Syncfusion.DocIO.DLS.IWSection;
+using Syncfusion.Pdf;
 
 namespace PdfNoteCompiler.Services
 {
@@ -150,18 +151,114 @@ namespace PdfNoteCompiler.Services
             }
         }
 
-        public Task<string> PrepareNotesForExportAsync(string pdfFileName)
+        public async Task<string> PrepareNotesForExportAsync(string pdfFileName)
         {
-            MessagingCenter.Send(this, "Log", "[Service]: PrepareNotesForExportAsync (Not Implemented).");
-            // Phase 5: Load correct docx, convert to PDF, save to temp location, return temp path
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(pdfFileName))
+            {
+                MessagingCenter.Send(this, "Log", "[Warning]: PrepareNotesForExportAsync called with empty filename.");
+                throw new ArgumentException(nameof(pdfFileName), "PDF file name cannot be null or empty.");
+            }
+            string noteFilePath = GetNoteFilePath(pdfFileName);
+            string tempPdfPath = Path.Combine(Path.GetTempPath(), $"{pdfFileName}_notes_export.pdf");
+
+            // Check if source notes file exists
+            if(!File.Exists(noteFilePath))
+            {
+                MessagingCenter.Send(this, "Log", $"[Warning]: No notes file found for '{pdfFileName}' to export.");
+                throw new FileNotFoundException("Notes file for this PDF does not exist yet. Add some highlights first.", noteFilePath);
+            }
+
+            // Optional: Check if the file is empty (has minimal content)
+            // You could load it and check paragraph count if needed, but a simple length check might suffice.
+            FileInfo fileInfo = new FileInfo(noteFilePath);
+            if (fileInfo.Length < 100) // Arbitrary small size threshold
+            {
+                MessagingCenter.Send(this, "Log", $"[Warning]: Notes file for '{pdfFileName}' appears to be empty.");
+                throw new InvalidOperationException("Notes file appears to be empty. Please add highlights before exporting.");
+            }
+
+            // Use semaphore to prevent conflict if user highlights while exporting (less likely but possible)
+            await _semaphore.WaitAsync();
+            MessagingCenter.Send(this, "Log", $"[Service]: Lock acquired for export of '{pdfFileName}'. Converting...");
+
+            try
+            {
+                // 1. LOAD the existing DOCX
+                WordDocument document;
+                using (FileStream fs = new FileStream(noteFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    // Use alias if needed: WordDocument document = new WordDocument(fs, FormatType.Docx);
+                    document = new WordDocument(fs, FormatType.Docx);
+                }
+
+                // 2. CONVERT to PDF in memory
+                using (DocIORenderer converter = new DocIORenderer())
+                {
+                    // PdfDocument is from Syncfusion.Pdf namespace
+                    using (PdfDocument pdfDocument = converter.ConvertToPDF(document))
+                    {
+                        document.Close(); // Close the Word doc object
+
+                        // 3. SAVE PDF to temporary location
+                        using (FileStream pdfStream = new FileStream(tempPdfPath, FileMode.Create, FileAccess.Write))
+                        {
+                            pdfDocument.Save(pdfStream); // Save the PDF document to the stream
+                        }
+                        // PdfDocument is implicitly closed by using statement
+                    }
+                } // Converter is implicitly disposed by using statement
+
+                MessagingCenter.Send(this, "Log", $"[Service]: Conversion complete. PDF saved to temp path: {Path.GetFileName(tempPdfPath)}");
+                return tempPdfPath; // Return the path to the temporary PDF
+            }
+            catch (Exception ex)
+            {
+                MessagingCenter.Send(this, "Log", $"[ERROR] During PDF export for '{pdfFileName}': {ex.Message}");
+                // Clean up temp file if conversion failed partway
+                CleanupExportFileInternal(tempPdfPath);
+                throw; // Re-throw the exception so the UI knows it failed
+            }
+            finally
+            {
+                _semaphore.Release();
+                MessagingCenter.Send(this, "Log", $"[Service]: Export lock released for '{pdfFileName}'.");
+            }
         }
 
         public void CleanupExportFiles(string tempFilePath)
         {
-            MessagingCenter.Send(this, "Log", "[Service]: CleanupExportFiles (Not Implemented).");
-            // Phase 5: Delete the temporary PDF file
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(tempFilePath)) return;
+
+            try
+            {
+                if (File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                    MessagingCenter.Send(this, "Log", $"[Service]: Cleaned up temporary export file: {Path.GetFileName(tempFilePath)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                //Log failure to delete the temp file, prevernt application crash
+                MessagingCenter.Send(this, "Log", $"[ERROR]: Could not delete temporary export file '{Path.GetFileName(tempFilePath)}': {ex.Message}");
+            }
+        }
+
+        private void CleanupExportFileInternal(string tempFilePath)
+        {
+            if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
+            {
+                try
+                {
+                    File.Delete(tempFilePath);
+                    MessagingCenter.Send(this, "Log", $"[Service]: Cleaned up temporary export file after failure: {Path.GetFileName(tempFilePath)}");
+                }
+                catch (Exception ex)
+                {
+                    //Log failure to delete the temp file, prevent application crash
+                    MessagingCenter.Send(this, "Log", $"[ERROR]: Could not delete temporary export file '{Path.GetFileName(tempFilePath)}' after failure: {ex.Message}");
+                }
+            }
         }
     }
 }

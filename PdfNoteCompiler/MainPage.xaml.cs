@@ -4,6 +4,7 @@ using Microsoft.Maui.ApplicationModel;
 using PdfNoteCompiler.Services;
 using Microsoft.Maui.ApplicationModel.Communication;
 using System.Threading.Tasks;
+//using AndroidX.Fragment.App.StrictMode;
 
 namespace PdfNoteCompiler;
 
@@ -136,9 +137,65 @@ public partial class MainPage : ContentPage
     }
 
     // STUB for Phase 5: Export Button
-    private void OnExportClicked(object sender, EventArgs e)
+    private async void OnExportClicked(object sender, EventArgs e)
     {
-        LogLabel.Text = "OnExportClicked (Not Implemented)\n" + LogLabel.Text;
+        LogLabel.Text = "[Action]: Export Notes clicked.\n" + LogLabel.Text;
+
+        // Check if PDF is loaded
+        if (string.IsNullOrEmpty(_currentPdfFileName))
+        {
+            await DisplayAlert("Export Error", "Please open a PDF document first.", "OK");
+            LogLabel.Text = "[Warning]: Export aborted. No PDF loaded.\n" + LogLabel.Text;
+            return;
+        }
+
+        string tempPdfPath = null;
+        try
+        {
+            ExportSpinner.IsVisible = true;
+            ExportSpinner.IsRunning = true;
+
+            tempPdfPath = await _noteService.PrepareNotesForExportAsync(_currentPdfFileName);
+
+            ExportSpinner.IsVisible = false;
+            ExportSpinner.IsRunning = false;
+
+            LogLabel.Text = $"[UI Action]: Showing share dialog for {Path.GetFileName(tempPdfPath)}.\n" + LogLabel.Text;
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = $"Notes for {_currentPdfFileName}",
+                File = new ShareFile(tempPdfPath)
+            });
+
+            LogLabel.Text = "[UI Action]: Share dialog closed.\n" + LogLabel.Text;
+        }
+        catch (FileNotFoundException fnfEx)
+        {
+            LogLabel.Text = $"[ERROR] Export failed: {fnfEx.Message}\n" + LogLabel.Text;
+            await DisplayAlert("Export Error", "Could not export notes. No notes file found for this PDF. Please add some highlights first.", "OK");
+        }
+        catch (InvalidOperationException opEx) // Catch specific error from service (empty file)
+        {
+            LogLabel.Text = $"[ERROR] Export failed: {opEx.Message}\n" + LogLabel.Text;
+            await DisplayAlert("Export Error", "Could not export notes. The notes file appears to be empty. Please add some highlights first.", "OK");
+        }
+        catch (Exception ex) // Catch general errors (conversion, sharing, etc.)
+        {
+            LogLabel.Text = $"[ERROR] During export process: {ex.Message}\n" + LogLabel.Text;
+            await DisplayAlert("Export Error", $"An unexpected error occurred during export:\n\n{ex.Message}", "OK");
+        }
+        finally
+        {
+            // Ensure spinner is hidden
+            ExportSpinner.IsRunning = false;
+            ExportSpinner.IsVisible = false;
+
+            // Cleanup temporary file (pass the file we got)
+            if (tempPdfPath != null)
+            {
+                _noteService.CleanupExportFiles(tempPdfPath);
+            }
+        }
     }
 
     // STUB for Phase 5: Toggle Button
@@ -146,10 +203,13 @@ public partial class MainPage : ContentPage
     {
         isLogPanelVisible = !isLogPanelVisible;
 
+        // Use GridLength animation or direct set for smooth transition (optional)
+        // For simplicity, direct set:
         if (isLogPanelVisible)
         {
             MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(300);
             ToggleLogButton.Text = "<";
+            LogLabel.Text = "[UI]: Log panel shown.\n" + LogLabel.Text;
         }
         else
         {
