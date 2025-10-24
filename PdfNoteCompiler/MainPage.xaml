@@ -7,7 +7,7 @@
 
     <Grid x:Name="MainLayoutGrid"
           ColumnDefinitions="*, 300, Auto"
-          RowDefinitions="*, Auto"
+          RowDefinitions="*, 70"
           ColumnSpacing="5">
 
         <VerticalStackLayout
@@ -31,11 +31,18 @@
                    TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
         </VerticalStackLayout>
 
-        <syncfusion:SfPdfViewer
-            x:Name="PdfViewer"
+        <ContentView
+            x:Name="ViewerContainer"
             Grid.Row="0" Grid.Column="0"
-            IsVisible="False" TextSelectionChanged="OnPdfTextSelected"
+            IsVisible="False">
+
+            <syncfusion:SfPdfViewer
+            x:Name="PdfViewer"
+            TextSelectionChanged="OnPdfTextSelected"
             DocumentLoaded="OnPdfDocumentLoaded" />
+        </ContentView>
+
+
         <ScrollView
             x:Name="LogPanel"
             Grid.Row="0" Grid.Column="1"

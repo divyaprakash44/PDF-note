@@ -5,6 +5,11 @@ using PdfNoteCompiler.Services;
 using Microsoft.Maui.ApplicationModel.Communication;
 using System.Threading.Tasks;
 //using AndroidX.Fragment.App.StrictMode;
+#if WINDOWS
+using Windows.Storage.Pickers;
+using Windows.Storage;
+using WinRT.Interop;
+#endif
 
 namespace PdfNoteCompiler;
 
@@ -40,9 +45,13 @@ public partial class MainPage : ContentPage
         {
             PdfViewer.UnloadDocument(); // Unload any previously loaded document
         }
-        PdfViewer.IsVisible = false; // Hide viewer
+        PdfViewer.IsVisible = false;
+        ViewerContainer.IsVisible = false; // Hide viewer
+        PdfViewer.VerticalOptions = LayoutOptions.Fill;
+        PdfViewer.HorizontalOptions = LayoutOptions.Fill;
+
         WelcomeContent.IsVisible = true; // Show welcome message
-        Title = "PDF Note Compiler"; // Reset title
+        Title = "Inscribe"; // Reset title
         _currentPdfFileName = string.Empty; // Clear current file name
     }
 
@@ -100,8 +109,8 @@ public partial class MainPage : ContentPage
     private void OnPdfDocumentLoaded(object sender, EventArgs e)
     {
         WelcomeContent.IsVisible = false; // Hide welcome message
-        PdfViewer.IsVisible = true;      // Show PDF viewer
-        ControlButton.IsVisible = true;      // Show control buttons
+        ViewerContainer.IsVisible = true;      // Show PDF viewer
+        PdfViewer.IsVisible = true;      // Show control buttons
         LogLabel.Text = $"[Loaded]: {_currentPdfFileName}.pdf successfully.\n" + LogLabel.Text;
     }
 
@@ -122,11 +131,7 @@ public partial class MainPage : ContentPage
             LogLabel.Text = $"[Action]: Auto-adding highlight for '{_currentPdfFileName}'. Text: '{capturedText.Substring(0, Math.Min(capturedText.Length, 30))}...'\n" + LogLabel.Text;
 
             await _noteService.AppendHighlightAsync(capturedText, _currentPdfFileName); //Call to the actual service
-            // *** Phase 4/5 Call will go here ***
-            // await _noteService.AppendHighlightAsync(capturedText, _currentPdfFileName);
-
-            // Optional: Clear selection visually after processing
-            // Do this *after* the await call in Phase 4/5 if needed
+      
             MainThread.BeginInvokeOnMainThread(() => {
                 PdfViewer.EnableTextSelection = false;
                 PdfViewer.EnableTextSelection = true;
@@ -150,25 +155,64 @@ public partial class MainPage : ContentPage
             return;
         }
 
-        string tempPdfPath = null;
+        MemoryStream pdfStream = null;
         try
         {
             ExportSpinner.IsVisible = true;
             ExportSpinner.IsRunning = true;
 
-            tempPdfPath = await _noteService.PrepareNotesForExportAsync(_currentPdfFileName);
+            pdfStream = await _noteService.PrepareNotesForExportAsync(_currentPdfFileName);
 
             ExportSpinner.IsVisible = false;
             ExportSpinner.IsRunning = false;
 
-            LogLabel.Text = $"[UI Action]: Showing share dialog for {Path.GetFileName(tempPdfPath)}.\n" + LogLabel.Text;
-            await Share.Default.RequestAsync(new ShareFileRequest
-            {
-                Title = $"Notes for {_currentPdfFileName}",
-                File = new ShareFile(tempPdfPath)
-            });
+#if WINDOWS
+                            // Use Windows FileSavePicker
+                            var savePicker = new FileSavePicker
+                            {
+                                SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+                                SuggestedFileName = $"{_currentPdfFileName}_notes" // Default filename suggestion
+                            };
+                            savePicker.FileTypeChoices.Add("PDF Document", new List<string>() { ".pdf" });
 
-            LogLabel.Text = "[UI Action]: Share dialog closed.\n" + LogLabel.Text;
+                            // Get the current window handle (required for the picker)
+                            var window = App.Current.Windows.FirstOrDefault() ?? throw new InvalidOperationException("No active window found");
+                            var hwnd = WindowNative.GetWindowHandle(window.Handler.PlatformView);
+                            InitializeWithWindow.Initialize(savePicker, hwnd);
+
+                            // Show the Save dialog
+                            StorageFile file = await savePicker.PickSaveFileAsync();
+
+                            if (file != null)
+                            {
+                                // Write the MemoryStream to the selected file
+                                using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                                {
+                                    using (var stream = fileStream.AsStreamForWrite()) // Convert WinRT stream to .NET stream
+                                    {
+                                        await pdfStream.CopyToAsync(stream); // Copy data
+                                        await stream.FlushAsync();
+                                    }
+                                }
+                                LogLabel.Text = $"[Success]: Notes exported successfully to '{file.Name}'.\n" + LogLabel.Text;
+                                await DisplayAlert("Export Successful", $"Notes saved as '{file.Name}' in {file.Path.Replace("\\" + file.Name,"")}", "OK");
+                            }
+                            else
+                            {
+                                LogLabel.Text = "[Info]: User cancelled save dialog.\n" + LogLabel.Text;
+                            }
+#elif ANDROID || IOS || MACCATALYST
+                        // Placeholder for other platforms - could use Share here or implement native savers later
+                        LogLabel.Text = "[Warning]: Save As dialog not implemented for this platform yet. Use Share?\n" + LogLabel.Text;
+                        // Example using Share as fallback:
+                        // string tempPath = Path.Combine(FileSystem.CacheDirectory, $"{_currentPdfFileName}_export.pdf");
+                        // using (var fs = File.Create(tempPath)) { await pdfStream.CopyToAsync(fs); }
+                        // await Share.Default.RequestAsync(new ShareFileRequest { Title = $"Notes for {_currentPdfFileName}", File = new ShareFile(tempPath) });
+                        // File.Delete(tempPath); // Clean up temp file
+                        await DisplayAlert("Not Implemented", "Save As dialog not yet available on this platform.", "OK");
+
+#endif
+                        // --- End Platform-Specific Save Logic ---
         }
         catch (FileNotFoundException fnfEx)
         {
@@ -192,10 +236,7 @@ public partial class MainPage : ContentPage
             ExportSpinner.IsVisible = false;
 
             // Cleanup temporary file (pass the file we got)
-            if (tempPdfPath != null)
-            {
-                _noteService.CleanupExportFiles(tempPdfPath);
-            }
+            pdfStream?.Dispose();
         }
     }
 

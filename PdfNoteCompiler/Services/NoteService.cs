@@ -151,7 +151,7 @@ namespace PdfNoteCompiler.Services
             }
         }
 
-        public async Task<string> PrepareNotesForExportAsync(string pdfFileName)
+        public async Task<MemoryStream> PrepareNotesForExportAsync(string pdfFileName)
         {
             if (string.IsNullOrEmpty(pdfFileName))
             {
@@ -180,6 +180,7 @@ namespace PdfNoteCompiler.Services
             // Use semaphore to prevent conflict if user highlights while exporting (less likely but possible)
             await _semaphore.WaitAsync();
             MessagingCenter.Send(this, "Log", $"[Service]: Lock acquired for export of '{pdfFileName}'. Converting...");
+            MemoryStream pdfMemoryStream = new MemoryStream();
 
             try
             {
@@ -200,22 +201,19 @@ namespace PdfNoteCompiler.Services
                         document.Close(); // Close the Word doc object
 
                         // 3. SAVE PDF to temporary location
-                        using (FileStream pdfStream = new FileStream(tempPdfPath, FileMode.Create, FileAccess.Write))
-                        {
-                            pdfDocument.Save(pdfStream); // Save the PDF document to the stream
-                        }
-                        // PdfDocument is implicitly closed by using statement
+                        pdfDocument.Save(pdfMemoryStream); // Save the PDF document to the stream
+                        pdfMemoryStream.Position = 0; // Reset stream position before reading
                     }
                 } // Converter is implicitly disposed by using statement
 
                 MessagingCenter.Send(this, "Log", $"[Service]: Conversion complete. PDF saved to temp path: {Path.GetFileName(tempPdfPath)}");
-                return tempPdfPath; // Return the path to the temporary PDF
+                return pdfMemoryStream; // Return the path to the temporary PDF
             }
             catch (Exception ex)
             {
                 MessagingCenter.Send(this, "Log", $"[ERROR] During PDF export for '{pdfFileName}': {ex.Message}");
                 // Clean up temp file if conversion failed partway
-                CleanupExportFileInternal(tempPdfPath);
+                pdfMemoryStream.Dispose();
                 throw; // Re-throw the exception so the UI knows it failed
             }
             finally
@@ -225,7 +223,7 @@ namespace PdfNoteCompiler.Services
             }
         }
 
-        public void CleanupExportFiles(string tempFilePath)
+        /*public void CleanupExportFiles(string tempFilePath)
         {
             if (string.IsNullOrEmpty(tempFilePath)) return;
 
@@ -259,6 +257,6 @@ namespace PdfNoteCompiler.Services
                     MessagingCenter.Send(this, "Log", $"[ERROR]: Could not delete temporary export file '{Path.GetFileName(tempFilePath)}' after failure: {ex.Message}");
                 }
             }
-        }
+        }*/
     }
 }

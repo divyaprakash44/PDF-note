@@ -10,7 +10,7 @@ namespace PdfNoteCompiler.Services
     {
         Task EnsureNoteDirectoryExistsAsync();
         Task AppendHighlightAsync(string text, string pdfFileName);
-        Task<string> PrepareNotesForExportAsync(string pdfFileName);
-        void CleanupExportFiles(string tempFilePath);
+        Task<MemoryStream> PrepareNotesForExportAsync(string pdfFileName);
+        // void CleanupExportFiles(string tempFilePath);
     }
 }
