@@ -51,7 +51,7 @@ public partial class MainPage : ContentPage
         PdfViewer.HorizontalOptions = LayoutOptions.Fill;
 
         WelcomeContent.IsVisible = true; // Show welcome message
-        Title = "Inscribe"; // Reset title
+        Title = "Namsoong"; // Reset title
         _currentPdfFileName = string.Empty; // Clear current file name
     }
 
