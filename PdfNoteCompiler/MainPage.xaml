@@ -6,7 +6,7 @@
              Title="Inscribe">
 
     <Grid x:Name="MainLayoutGrid"
-          ColumnDefinitions="*, 300, Auto"
+          ColumnDefinitions="*, 250, Auto"
           RowDefinitions="*, 70"
           ColumnSpacing="5">
 

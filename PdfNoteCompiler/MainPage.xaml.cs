@@ -79,7 +79,7 @@ public partial class MainPage : ContentPage
 
             if (pickResult != null)
             {
-                LogLabel.Text = $"[Info]: User selected: {pickResult.FileName}\n" + LogLabel.Text;
+                LogLabel.Text = $"[Info]: User selected: {pickResult.FileName}\n" + LogLabel.Text;      //VERIFY
                 // Store the file name (without extension) for note file creation
                 _currentPdfFileName = Path.GetFileNameWithoutExtension(pickResult.FileName);
                 Title = $"InScribe - {_currentPdfFileName}"; // Update page title
@@ -249,14 +249,16 @@ public partial class MainPage : ContentPage
         // For simplicity, direct set:
         if (isLogPanelVisible)
         {
-            MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(300);
-            ToggleLogButton.Text = "<";
+            MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(250);
+            LogPanel.IsVisible = true;
+            ToggleLogButton.Text = ">";
             LogLabel.Text = "[UI]: Log panel shown.\n" + LogLabel.Text;
         }
         else
         {
-            MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(0);
-            ToggleLogButton.Text = ">";
+            MainLayoutGrid.ColumnDefinitions[1].Width = new GridLength(2);
+            LogPanel.IsVisible = false;
+            ToggleLogButton.Text = "<";
         }
     }
 
